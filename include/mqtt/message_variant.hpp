@@ -28,7 +28,16 @@ using message_variant = variant<
     unsuback_message,
     pingreq_message,
     pingresp_message,
-    disconnect_message
+    disconnect_message,
+    publish_32_message,
+    puback_32_message,
+    pubrec_32_message,
+    pubrel_32_message,
+    pubcomp_32_message,
+    subscribe_32_message,
+    suback_32_message,
+    unsubscribe_32_message,
+    unsuback_32_message
 >;
 
 namespace detail {
@@ -101,7 +110,9 @@ inline std::string continuous_buffer(message_variant const& mv) {
 
 using store_message_variant = variant<
     publish_message,
-    pubrel_message
+    pubrel_message,
+    publish_32_message,
+    pubrel_32_message
 >;
 
 namespace detail {

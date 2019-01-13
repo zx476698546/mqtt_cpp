@@ -22,35 +22,71 @@ BOOST_AUTO_TEST_CASE( publish_qos1 ) {
     c2->set_client_id("cid1");
     c2->set_clean_session(false);
 
+    using packet_id_t = typename std::remove_reference_t<decltype(*c1)>::packet_id_t;
+
     std::map<std::uint16_t, std::string> serialized;
 
-    c1->set_serialize_handlers(
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            serialized.emplace(packet_id, std::string(data, size));
-        },
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized[packet_id] = std::string(data, size);
-        },
-        [&serialized](std::uint16_t packet_id) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized.erase(packet_id);
-        }
-    );
+    if (sizeof(packet_id_t) == 2) {
+        c1->set_serialize_handlers(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
 
-    c2->set_serialize_handlers(
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            serialized.emplace(packet_id, std::string(data, size));
-        },
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized[packet_id] = std::string(data, size);
-        },
-        [&serialized](std::uint16_t packet_id) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized.erase(packet_id);
-        }
-    );
+        c2->set_serialize_handlers(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
+    }
+    else if (sizeof(packet_id_t) == 4) {
+        c1->set_serialize_handlers_32(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
+
+        c2->set_serialize_handlers_32(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
+    }
+    else {
+        BOOST_CHECK(false);
+    }
 
     std::uint16_t pid_pub;
 
@@ -128,8 +164,18 @@ BOOST_AUTO_TEST_CASE( publish_qos1 ) {
         (boost::system::error_code const&) {
             BOOST_TEST(current() == "h_error");
             ++order;
-            for (auto const& e : serialized) {
-                c2->restore_serialized_message(e.first, e.second.begin(), e.second.end());
+            if (sizeof(packet_id_t) == 2) {
+                for (auto const& e : serialized) {
+                    c2->restore_serialized_message(e.first, e.second.begin(), e.second.end());
+                }
+            }
+            else if (sizeof(packet_id_t) == 4) {
+                for (auto const& e : serialized) {
+                    c2->restore_serialized_message_32(e.first, e.second.begin(), e.second.end());
+                }
+            }
+            else {
+                BOOST_CHECK(false);
             }
             c2->connect();
         });
@@ -166,7 +212,7 @@ BOOST_AUTO_TEST_CASE( publish_qos1 ) {
         });
     c2->set_puback_handler(
         [&order, &current, &c2, &pid_pub]
-        (std::uint16_t packet_id) {
+        (packet_id_t packet_id) {
             BOOST_TEST(current() == "h_puback");
             ++order;
             BOOST_TEST(packet_id == pid_pub);
@@ -193,35 +239,71 @@ BOOST_AUTO_TEST_CASE( publish_qos2 ) {
     c2->set_client_id("cid1");
     c2->set_clean_session(false);
 
+    using packet_id_t = typename std::remove_reference_t<decltype(*c1)>::packet_id_t;
+
     std::map<std::uint16_t, std::string> serialized;
 
-    c1->set_serialize_handlers(
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            serialized.emplace(packet_id, std::string(data, size));
-        },
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized[packet_id] = std::string(data, size);
-        },
-        [&serialized](std::uint16_t packet_id) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized.erase(packet_id);
-        }
-    );
+    if (sizeof(packet_id_t) == 2) {
+        c1->set_serialize_handlers(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
 
-    c2->set_serialize_handlers(
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            serialized.emplace(packet_id, std::string(data, size));
-        },
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized[packet_id] = std::string(data, size);
-        },
-        [&serialized](std::uint16_t packet_id) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized.erase(packet_id);
-        }
-    );
+        c2->set_serialize_handlers(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
+    }
+    else if (sizeof(packet_id_t) == 4) {
+        c1->set_serialize_handlers_32(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
+
+        c2->set_serialize_handlers_32(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
+    }
+    else {
+        BOOST_CHECK(false);
+    }
 
     std::uint16_t pid_pub;
 
@@ -300,8 +382,18 @@ BOOST_AUTO_TEST_CASE( publish_qos2 ) {
         (boost::system::error_code const&) {
             BOOST_TEST(current() == "h_error");
             ++order;
-            for (auto const& e : serialized) {
-                c2->restore_serialized_message(e.first, e.second.begin(), e.second.end());
+            if (sizeof(packet_id_t) == 2) {
+                for (auto const& e : serialized) {
+                    c2->restore_serialized_message(e.first, e.second.begin(), e.second.end());
+                }
+            }
+            else if (sizeof(packet_id_t) == 4) {
+                for (auto const& e : serialized) {
+                    c2->restore_serialized_message_32(e.first, e.second.begin(), e.second.end());
+                }
+            }
+            else {
+                BOOST_CHECK(false);
             }
             c2->connect();
         });
@@ -338,7 +430,7 @@ BOOST_AUTO_TEST_CASE( publish_qos2 ) {
         });
     c2->set_pubrec_handler(
         [&order, &current, &pid_pub]
-        (std::uint16_t packet_id) {
+        (packet_id_t packet_id) {
             BOOST_TEST(current() == "h_pubrec");
             ++order;
             BOOST_TEST(packet_id == pid_pub);
@@ -346,7 +438,7 @@ BOOST_AUTO_TEST_CASE( publish_qos2 ) {
         });
     c2->set_pubcomp_handler(
         [&order, &current, &c2, &pid_pub]
-        (std::uint16_t packet_id) {
+        (packet_id_t packet_id) {
             BOOST_TEST(current() == "h_pubcomp");
             ++order;
             BOOST_TEST(packet_id == pid_pub);
@@ -372,35 +464,71 @@ BOOST_AUTO_TEST_CASE( pubrel_qos2 ) {
     c2->set_client_id("cid1");
     c2->set_clean_session(false);
 
+    using packet_id_t = typename std::remove_reference_t<decltype(*c1)>::packet_id_t;
+
     std::map<std::uint16_t, std::string> serialized;
 
-    c1->set_serialize_handlers(
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            serialized.emplace(packet_id, std::string(data, size));
-        },
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized[packet_id] = std::string(data, size);
-        },
-        [&serialized](std::uint16_t packet_id) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized.erase(packet_id);
-        }
-    );
+    if (sizeof(packet_id_t) == 2) {
+        c1->set_serialize_handlers(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
 
-    c2->set_serialize_handlers(
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            serialized.emplace(packet_id, std::string(data, size));
-        },
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized[packet_id] = std::string(data, size);
-        },
-        [&serialized](std::uint16_t packet_id) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized.erase(packet_id);
-        }
-    );
+        c2->set_serialize_handlers(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
+    }
+    else if (sizeof(packet_id_t) == 4) {
+        c1->set_serialize_handlers_32(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
+
+        c2->set_serialize_handlers_32(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
+    }
+    else {
+        BOOST_CHECK(false);
+    }
 
     std::uint16_t pid_pub;
 
@@ -478,14 +606,24 @@ BOOST_AUTO_TEST_CASE( pubrel_qos2 ) {
         (boost::system::error_code const&) {
             BOOST_TEST(current() == "h_error");
             ++order;
-            for (auto const& e : serialized) {
-                c2->restore_serialized_message(e.first, e.second.begin(), e.second.end());
+            if (sizeof(packet_id_t) == 2) {
+                for (auto const& e : serialized) {
+                    c2->restore_serialized_message(e.first, e.second.begin(), e.second.end());
+                }
+            }
+            else if (sizeof(packet_id_t) == 4) {
+                for (auto const& e : serialized) {
+                    c2->restore_serialized_message_32(e.first, e.second.begin(), e.second.end());
+                }
+            }
+            else {
+                BOOST_CHECK(false);
             }
             c2->connect();
         });
     c1->set_pubrec_handler(
         [&order, &current, &c1, &pid_pub]
-        (std::uint16_t packet_id) {
+        (packet_id_t packet_id) {
             switch (order) {
             case 3:
                 BOOST_TEST(current() == "h_pubrec");
@@ -532,7 +670,7 @@ BOOST_AUTO_TEST_CASE( pubrel_qos2 ) {
         });
     c2->set_pubcomp_handler(
         [&order, &current, &c2]
-        (std::uint16_t packet_id) {
+        (packet_id_t packet_id) {
             BOOST_TEST(current() == "h_pubcomp");
             ++order;
             BOOST_TEST(packet_id == 1);
@@ -558,35 +696,71 @@ BOOST_AUTO_TEST_CASE( multi_publish_qos1 ) {
     c2->set_client_id("cid1");
     c2->set_clean_session(false);
 
+    using packet_id_t = typename std::remove_reference_t<decltype(*c1)>::packet_id_t;
+
     std::map<std::uint16_t, std::string> serialized;
 
-    c1->set_serialize_handlers(
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            serialized.emplace(packet_id, std::string(data, size));
-        },
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized[packet_id] = std::string(data, size);
-        },
-        [&serialized](std::uint16_t packet_id) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized.erase(packet_id);
-        }
-    );
+    if (sizeof(packet_id_t) == 2) {
+        c1->set_serialize_handlers(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
 
-    c2->set_serialize_handlers(
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            serialized.emplace(packet_id, std::string(data, size));
-        },
-        [&serialized](std::uint16_t packet_id, char const* data, std::size_t size) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized[packet_id] = std::string(data, size);
-        },
-        [&serialized](std::uint16_t packet_id) {
-            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-            serialized.erase(packet_id);
-        }
-    );
+        c2->set_serialize_handlers(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
+    }
+    else if (sizeof(packet_id_t) == 4) {
+        c1->set_serialize_handlers_32(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
+
+        c2->set_serialize_handlers_32(
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                serialized.emplace(packet_id, std::string(data, size));
+            },
+            [&serialized](packet_id_t packet_id, char const* data, std::size_t size) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized[packet_id] = std::string(data, size);
+            },
+            [&serialized](packet_id_t packet_id) {
+                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+                serialized.erase(packet_id);
+            }
+        );
+    }
+    else {
+        BOOST_CHECK(false);
+    }
 
     std::uint16_t pid_pub1;
     std::uint16_t pid_pub2;
@@ -670,8 +844,18 @@ BOOST_AUTO_TEST_CASE( multi_publish_qos1 ) {
             case 3:
                 BOOST_TEST(current() == "h_error1");
                 ++order;
-                for (auto const& e : serialized) {
-                    c2->restore_serialized_message(e.first, e.second.begin(), e.second.end());
+                if (sizeof(packet_id_t) == 2) {
+                    for (auto const& e : serialized) {
+                        c2->restore_serialized_message(e.first, e.second.begin(), e.second.end());
+                    }
+                }
+                else if (sizeof(packet_id_t) == 4) {
+                    for (auto const& e : serialized) {
+                        c2->restore_serialized_message_32(e.first, e.second.begin(), e.second.end());
+                    }
+                }
+                else {
+                    BOOST_CHECK(false);
                 }
                 c2->connect();
                 break;
@@ -712,7 +896,7 @@ BOOST_AUTO_TEST_CASE( multi_publish_qos1 ) {
         });
     c2->set_puback_handler(
         [&order, &current, &c2, &pid_pub1, &pid_pub2]
-        (std::uint16_t packet_id) {
+        (packet_id_t packet_id) {
             switch (order) {
             case 5:
                 BOOST_TEST(current() == "h_puback1");
