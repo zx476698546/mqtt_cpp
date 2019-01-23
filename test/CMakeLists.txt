@@ -14,7 +14,8 @@ LIST (APPEND check_PROGRAMS
      pubsub_no_strand.cpp
      remaining_length.cpp
      multi_sub.cpp
-     resend.cpp
+     resend_1.cpp
+     resend_2.cpp
      resend_serialize.cpp
      resend_serialize_ptr_size.cpp
      offline.cpp
