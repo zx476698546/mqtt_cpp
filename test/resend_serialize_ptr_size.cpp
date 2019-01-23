@@ -24,7 +24,7 @@ BOOST_AUTO_TEST_CASE( publish_qos1 ) {
 
     using packet_id_t = typename std::remove_reference_t<decltype(*c1)>::packet_id_t;
 
-    std::map<std::uint16_t, std::string> serialized;
+    std::map<packet_id_t, std::string> serialized;
 
     if (sizeof(packet_id_t) == 2) {
         c1->set_serialize_handlers(
@@ -241,7 +241,7 @@ BOOST_AUTO_TEST_CASE( publish_qos2 ) {
 
     using packet_id_t = typename std::remove_reference_t<decltype(*c1)>::packet_id_t;
 
-    std::map<std::uint16_t, std::string> serialized;
+    std::map<packet_id_t, std::string> serialized;
 
     if (sizeof(packet_id_t) == 2) {
         c1->set_serialize_handlers(
@@ -466,7 +466,7 @@ BOOST_AUTO_TEST_CASE( pubrel_qos2 ) {
 
     using packet_id_t = typename std::remove_reference_t<decltype(*c1)>::packet_id_t;
 
-    std::map<std::uint16_t, std::string> serialized;
+    std::map<packet_id_t, std::string> serialized;
 
     if (sizeof(packet_id_t) == 2) {
         c1->set_serialize_handlers(
@@ -698,7 +698,7 @@ BOOST_AUTO_TEST_CASE( multi_publish_qos1 ) {
 
     using packet_id_t = typename std::remove_reference_t<decltype(*c1)>::packet_id_t;
 
-    std::map<std::uint16_t, std::string> serialized;
+    std::map<packet_id_t, std::string> serialized;
 
     if (sizeof(packet_id_t) == 2) {
         c1->set_serialize_handlers(

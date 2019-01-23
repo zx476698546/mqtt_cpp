@@ -25,7 +25,7 @@ BOOST_AUTO_TEST_CASE( publish_qos1 ) {
     using packet_id_t = typename std::remove_reference_t<decltype(*c1)>::packet_id_t;
 
     std::map<
-        std::uint16_t,
+        packet_id_t,
         std::tuple<
             bool,       // is publish
             std::string // whole packet bytes
@@ -273,7 +273,7 @@ BOOST_AUTO_TEST_CASE( publish_qos2 ) {
     using packet_id_t = typename std::remove_reference_t<decltype(*c1)>::packet_id_t;
 
     std::map<
-        std::uint16_t,
+        packet_id_t,
         std::tuple<
             bool,       // is publish
             std::string // whole packet bytes
@@ -528,7 +528,7 @@ BOOST_AUTO_TEST_CASE( pubrel_qos2 ) {
     using packet_id_t = typename std::remove_reference_t<decltype(*c1)>::packet_id_t;
 
     std::map<
-        std::uint16_t,
+        packet_id_t,
         std::tuple<
             bool,       // is publish
             std::string // whole packet bytes
@@ -790,7 +790,7 @@ BOOST_AUTO_TEST_CASE( multi_publish_qos1 ) {
     using packet_id_t = typename std::remove_reference_t<decltype(*c1)>::packet_id_t;
 
     std::map<
-        std::uint16_t,
+        packet_id_t,
         std::tuple<
             bool,       // is publish
             std::string // whole packet bytes
