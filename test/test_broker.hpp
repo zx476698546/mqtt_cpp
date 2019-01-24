@@ -58,6 +58,7 @@ public:
     template <typename Endpoint>
     void handle_accept(Endpoint& ep) {
         auto sp = ep.shared_from_this();
+        ep.set_auto_pub_response(true, true);
         ep.start_session(
             [sp] // keeping ep's lifetime as sp until session finished
             (boost::system::error_code const& /*ec*/) {
@@ -86,7 +87,11 @@ public:
              bool clean_session,
              std::uint16_t /*keep_alive*/) {
                 if (client_id.empty() && !clean_session) {
-                    ep.connack(false, mqtt::connect_return_code::identifier_rejected);
+                    ep.async_connack(
+                        false,
+                        mqtt::connect_return_code::identifier_rejected,
+                        [](boost::system::error_code const&) {}
+                    );
                     return false;
                 }
                 try_connect(clean_session, ep.shared_from_this(), client_id, std::move(will));
@@ -160,18 +165,24 @@ public:
                     res.emplace_back(qos);
                     subs_.emplace(std::make_shared<std::string>(topic), ep.shared_from_this(), qos);
                 }
-                ep.suback(packet_id, res);
+                ep.async_suback(
+                    packet_id,
+                    res,
+                    [](boost::system::error_code const&) {}
+                );
                 for (auto const& e : entries) {
                     std::string const& topic = std::get<0>(e);
                     std::uint8_t qos = std::get<1>(e);
                     auto it = retains_.find(topic);
                     if (it != retains_.end()) {
-                        ep.publish(
+                        ep.async_publish(
                             as::buffer(*it->topic),
                             as::buffer(*it->contents),
                             [t = it->topic, c = it->contents] {},
                             std::min(it->qos, qos),
-                            true);
+                            true,
+                            [](boost::system::error_code const&) {}
+                        );
                     }
                 }
                 return true;
@@ -184,13 +195,18 @@ public:
                 for (auto const& topic : topics) {
                     subs_.erase(topic);
                 }
-                ep.unsuback(packet_id);
+                ep.async_unsuback(
+                    packet_id,
+                    [](boost::system::error_code const&) {}
+                );
                 return true;
             }
         );
         ep.set_pingreq_handler(
             [&] {
-                ep.pingresp();
+                ep.async_pingresp(
+                    [](boost::system::error_code const&) {}
+                );
                 return true;
             }
         );
@@ -228,7 +244,11 @@ private:
             boost::apply_visitor(
                 make_lambda_visitor<void>(
                     [&](auto& con) {
-                        con->connack(false, mqtt::connect_return_code::accepted);
+                        con->async_connack(
+                            false,
+                            mqtt::connect_return_code::accepted,
+                            [con](boost::system::error_code const&) {}
+                        );
                     }
                 ),
                 spep
@@ -243,7 +263,11 @@ private:
                     boost::apply_visitor(
                         make_lambda_visitor<void>(
                             [&](auto& con) {
-                                con->connack(false, mqtt::connect_return_code::accepted);
+                                con->async_connack(
+                                    false,
+                                    mqtt::connect_return_code::accepted,
+                                    [con](boost::system::error_code const&) {}
+                                );
                             }
                         ),
                         spep
@@ -254,7 +278,11 @@ private:
                     boost::apply_visitor(
                         make_lambda_visitor<void>(
                             [&](auto& con) {
-                                con->connack(true, mqtt::connect_return_code::accepted);
+                                con->async_connack(
+                                    true,
+                                    mqtt::connect_return_code::accepted,
+                                    [con](boost::system::error_code const&) {}
+                                );
                             }
                         ),
                         spep
@@ -274,12 +302,13 @@ private:
                 boost::apply_visitor(
                     make_lambda_visitor<void>(
                         [&](auto& con) {
-                            con->publish(
+                            con->async_publish(
                                 as::buffer(*d.topic),
                                 as::buffer(*d.contents),
                                 [t = d.topic, c = d.contents] {},
                                 d.qos,
-                                true
+                                false,
+                                [con](boost::system::error_code const&) {}
                             );
                         }
                     ),
@@ -304,12 +333,13 @@ private:
                 boost::apply_visitor(
                     make_lambda_visitor<void>(
                         [&](auto& con) {
-                            con->publish(
+                            con->async_publish(
                                 as::buffer(*topic),
                                 as::buffer(*contents),
                                 [topic, contents] {},
                                 std::min(r.first->qos, qos),
-                                false
+                                false,
+                                [con](boost::system::error_code const&) {}
                             );
                         }
                     ),
