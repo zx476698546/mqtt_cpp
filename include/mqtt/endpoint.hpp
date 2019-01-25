@@ -5729,7 +5729,7 @@ private:
     };
 
     void do_async_write(message_variant mv, async_handler_t const& func) {
-        std::cout << "dasw(mv,f)" << std::endl;
+        std::cout << this << ":dasw(mv,f)" << std::endl;
         if (!connected_) {
             if (func) func(boost::system::errc::make_error_code(boost::system::errc::success));
             return;
@@ -5738,12 +5738,13 @@ private:
         socket_->post(
             [this, self, MQTT_CAPTURE_MOVE(mv), func]
             () {
-                std::cout << "q.epb(mv,f)" << std::endl;
+                std::cout << this << ":q.epb(mv,f)" << std::endl;
                 queue_.emplace_back(std::move(mv), func);
                 auto size = queue_.size();
+                std::cout << this << ":q.sz:" << size << std::endl;
                 if (size > 1) return;
-                std::cout << "q.sz:" << size << std::endl;
                 do_async_write();
+                std::cout << this << ":fin1" << size << std::endl;
             }
         );
     }
@@ -5754,7 +5755,7 @@ private:
         auto const& func = elem.handler();
         auto self = this->shared_from_this();
         if (h_pre_send_) h_pre_send_();
-        std::cout << "asw" <<  std::endl;
+        std::cout << this << ":asw" <<  std::endl;
         async_write(
             *socket_,
             const_buffer_sequence(mv),
@@ -5782,7 +5783,7 @@ private:
              expected_(expected)
         {}
         void operator()(boost::system::error_code const& ec) const {
-            std::cout << "wcp1" <<  std::endl;
+            std::cout << self_.get() << ":wcp1" <<  std::endl;
             if (func_) func_(ec);
             if (ec || // Error is handled by async_read.
                 !self_->connected_) {
@@ -5797,21 +5798,27 @@ private:
         void operator()(
             boost::system::error_code const& ec,
             std::size_t bytes_transferred) const {
-            std::cout << "wcp2" <<  std::endl;
+            std::cout << self_.get() << ":wcp2" <<  std::endl;
             if (func_) func_(ec);
             if (ec || // Error is handled by async_read.
                 !self_->connected_) {
+                std::cout << self_.get() << ":wcp2:clear1" <<  std::endl;
                 self_->queue_.clear();
                 return;
             }
             if (expected_ != bytes_transferred) {
+                std::cout << self_.get() << ":wcp2:clear2" <<  std::endl;
                 self_->queue_.clear();
                 throw write_bytes_transferred_error(expected_, bytes_transferred);
             }
+            std::cout << self_.get() << ":wcp2:q_pop" <<  std::endl;
             self_->queue_.pop_front();
+            std::cout << self_.get() << ":q_size:" << self_->queue_.size() <<  std::endl;
             if (!self_->queue_.empty()) {
+                std::cout << self_.get() << ":next aws" <<  std::endl;
                 self_->do_async_write();
             }
+            std::cout << self_.get() << ":wcp2:fin" <<  std::endl;
         }
         std::shared_ptr<this_type> self_;
         async_handler_t func_;
