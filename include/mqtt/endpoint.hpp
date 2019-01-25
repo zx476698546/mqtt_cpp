@@ -5785,12 +5785,16 @@ private:
         void operator()(boost::system::error_code const& ec) const {
             std::cout << self_.get() << ":wcp1" <<  std::endl;
             if (func_) func_(ec);
+            self_->queue_.pop_front();
             if (ec || // Error is handled by async_read.
                 !self_->connected_) {
-                self_->queue_.clear();
+                self_->connected_ = false;
+                while (!self_->queue_.empty()) {
+                    self_->queue_.front().handler()(ec);
+                    self_->queue_.pop_front();
+                }
                 return;
             }
-            self_->queue_.pop_front();
             if (!self_->queue_.empty()) {
                 self_->do_async_write();
             }
@@ -5800,20 +5804,28 @@ private:
             std::size_t bytes_transferred) const {
             std::cout << self_.get() << ":wcp2" <<  std::endl;
             if (func_) func_(ec);
+            std::cout << self_.get() << ":wcp2:q_pop" <<  std::endl;
+            self_->queue_.pop_front();
+            std::cout << self_.get() << ":q_size:" << self_->queue_.size() <<  std::endl;
             if (ec || // Error is handled by async_read.
                 !self_->connected_) {
                 std::cout << self_.get() << ":wcp2:clear1" <<  std::endl;
-                self_->queue_.clear();
+                self_->connected_ = false;
+                while (!self_->queue_.empty()) {
+                    self_->queue_.front().handler()(ec);
+                    self_->queue_.pop_front();
+                }
                 return;
             }
             if (expected_ != bytes_transferred) {
                 std::cout << self_.get() << ":wcp2:clear2" <<  std::endl;
-                self_->queue_.clear();
+                self_->connected_ = false;
+                while (!self_->queue_.empty()) {
+                    self_->queue_.front().handler()(ec);
+                    self_->queue_.pop_front();
+                }
                 throw write_bytes_transferred_error(expected_, bytes_transferred);
             }
-            std::cout << self_.get() << ":wcp2:q_pop" <<  std::endl;
-            self_->queue_.pop_front();
-            std::cout << self_.get() << ":q_size:" << self_->queue_.size() <<  std::endl;
             if (!self_->queue_.empty()) {
                 std::cout << self_.get() << ":next aws" <<  std::endl;
                 self_->do_async_write();
