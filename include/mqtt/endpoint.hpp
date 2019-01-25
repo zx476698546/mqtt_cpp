@@ -5734,7 +5734,9 @@ private:
         socket_->post(
             [this, self, MQTT_CAPTURE_MOVE(mv), func]
             () {
+                std::cout << this << ":q.epb(mv,f)" << std::endl;
                 if (!connected_) {
+                    std::cout << this << ":not connected" << std::endl;
                     if (func) func(boost::system::errc::make_error_code(boost::system::errc::connection_reset));
                     return;
                 }
