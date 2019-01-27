@@ -9,6 +9,24 @@
 
 BOOST_AUTO_TEST_SUITE(test_resend_serialize_ptr_size)
 
+template <typename Client, typename Elem>
+inline
+typename std::enable_if<
+    sizeof(typename Client::element_type::packet_id_t) == 2
+>::type
+restore_serialized_message(Client const& c, Elem const& e) {
+    c->restore_serialized_message(e.first, e.second.begin(), e.second.end());
+}
+
+template <typename Client, typename Elem>
+inline
+typename std::enable_if<
+    sizeof(typename Client::element_type::packet_id_t) == 4
+>::type
+restore_serialized_message(Client const& c, Elem const& e) {
+    c->restore_serialized_message_32(e.first, e.second.begin(), e.second.end());
+}
+
 BOOST_AUTO_TEST_CASE( publish_qos1 ) {
     boost::asio::io_service ios;
     test_broker b(ios);
@@ -164,18 +182,8 @@ BOOST_AUTO_TEST_CASE( publish_qos1 ) {
         (boost::system::error_code const&) {
             BOOST_TEST(current() == "h_error");
             ++order;
-            if (sizeof(packet_id_t) == 2) {
-                for (auto const& e : serialized) {
-                    c2->restore_serialized_message(e.first, e.second.begin(), e.second.end());
-                }
-            }
-            else if (sizeof(packet_id_t) == 4) {
-                for (auto const& e : serialized) {
-                    c2->restore_serialized_message_32(e.first, e.second.begin(), e.second.end());
-                }
-            }
-            else {
-                BOOST_CHECK(false);
+            for (auto const& e : serialized) {
+                restore_serialized_message(c2, e);
             }
             c2->connect();
         });
@@ -382,18 +390,8 @@ BOOST_AUTO_TEST_CASE( publish_qos2 ) {
         (boost::system::error_code const&) {
             BOOST_TEST(current() == "h_error");
             ++order;
-            if (sizeof(packet_id_t) == 2) {
-                for (auto const& e : serialized) {
-                    c2->restore_serialized_message(e.first, e.second.begin(), e.second.end());
-                }
-            }
-            else if (sizeof(packet_id_t) == 4) {
-                for (auto const& e : serialized) {
-                    c2->restore_serialized_message_32(e.first, e.second.begin(), e.second.end());
-                }
-            }
-            else {
-                BOOST_CHECK(false);
+            for (auto const& e : serialized) {
+                restore_serialized_message(c2, e);
             }
             c2->connect();
         });
@@ -606,18 +604,8 @@ BOOST_AUTO_TEST_CASE( pubrel_qos2 ) {
         (boost::system::error_code const&) {
             BOOST_TEST(current() == "h_error");
             ++order;
-            if (sizeof(packet_id_t) == 2) {
-                for (auto const& e : serialized) {
-                    c2->restore_serialized_message(e.first, e.second.begin(), e.second.end());
-                }
-            }
-            else if (sizeof(packet_id_t) == 4) {
-                for (auto const& e : serialized) {
-                    c2->restore_serialized_message_32(e.first, e.second.begin(), e.second.end());
-                }
-            }
-            else {
-                BOOST_CHECK(false);
+            for (auto const& e : serialized) {
+                restore_serialized_message(c2, e);
             }
             c2->connect();
         });
@@ -844,18 +832,8 @@ BOOST_AUTO_TEST_CASE( multi_publish_qos1 ) {
             case 3:
                 BOOST_TEST(current() == "h_error1");
                 ++order;
-                if (sizeof(packet_id_t) == 2) {
-                    for (auto const& e : serialized) {
-                        c2->restore_serialized_message(e.first, e.second.begin(), e.second.end());
-                    }
-                }
-                else if (sizeof(packet_id_t) == 4) {
-                    for (auto const& e : serialized) {
-                        c2->restore_serialized_message_32(e.first, e.second.begin(), e.second.end());
-                    }
-                }
-                else {
-                    BOOST_CHECK(false);
+                for (auto const& e : serialized) {
+                    restore_serialized_message(c2, e);
                 }
                 c2->connect();
                 break;

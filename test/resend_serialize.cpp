@@ -9,6 +9,52 @@
 
 BOOST_AUTO_TEST_SUITE(test_resend_serialize)
 
+template <typename Client, typename Packet>
+inline
+typename std::enable_if<
+    sizeof(typename Client::element_type::packet_id_t) == 2
+>::type
+restore_serialized_publish_message(Client const& c, Packet const& packet) {
+    c->restore_serialized_message(
+        mqtt::publish_message(packet.begin(), packet.end()),
+        []{}
+    );
+}
+
+template <typename Client, typename Packet>
+inline
+typename std::enable_if<
+    sizeof(typename Client::element_type::packet_id_t) == 4
+>::type
+restore_serialized_publish_message(Client const& c, Packet const& packet) {
+    c->restore_serialized_message(
+        mqtt::publish_32_message(packet.begin(), packet.end()),
+        []{}
+    );
+}
+
+template <typename Client, typename Packet>
+inline
+typename std::enable_if<
+    sizeof(typename Client::element_type::packet_id_t) == 2
+>::type
+restore_serialized_pubrel_message(Client const& c, Packet const& packet) {
+    c->restore_serialized_message(
+        mqtt::pubrel_message(packet.begin(), packet.end())
+    );
+}
+
+template <typename Client, typename Packet>
+inline
+typename std::enable_if<
+    sizeof(typename Client::element_type::packet_id_t) == 4
+>::type
+restore_serialized_pubrel_message(Client const& c, Packet const& packet) {
+    c->restore_serialized_message(
+        mqtt::pubrel_32_message(packet.begin(), packet.end())
+    );
+}
+
 BOOST_AUTO_TEST_CASE( publish_qos1 ) {
     boost::asio::io_service ios;
     test_broker b(ios);
@@ -175,37 +221,11 @@ BOOST_AUTO_TEST_CASE( publish_qos1 ) {
                 auto const& packet = std::get<1>(e.second);
                 if (std::get<0>(e.second)) {
                     // is publish
-                    if (sizeof(packet_id_t) == 2) {
-                        c2->restore_serialized_message(
-                            mqtt::publish_message(packet.begin(), packet.end()),
-                            []{}
-                        );
-                    }
-                    else if (sizeof(packet_id_t) == 4) {
-                        c2->restore_serialized_message(
-                            mqtt::publish_32_message(packet.begin(), packet.end()),
-                            []{}
-                        );
-                    }
-                    else {
-                        BOOST_CHECK(false);
-                    }
+                    restore_serialized_publish_message(c2, packet);
                 }
                 else {
                     // pubrel
-                    if (sizeof(packet_id_t) == 2) {
-                        c2->restore_serialized_message(
-                            mqtt::pubrel_message(packet.begin(), packet.end())
-                        );
-                    }
-                    else if (sizeof(packet_id_t) == 4) {
-                        c2->restore_serialized_message(
-                            mqtt::pubrel_32_message(packet.begin(), packet.end())
-                        );
-                    }
-                    else {
-                        BOOST_CHECK(false);
-                    }
+                    restore_serialized_pubrel_message(c2, packet);
                 }
             }
             c2->connect();
@@ -423,37 +443,11 @@ BOOST_AUTO_TEST_CASE( publish_qos2 ) {
                 auto const& packet = std::get<1>(e.second);
                 if (std::get<0>(e.second)) {
                     // is publish
-                    if (sizeof(packet_id_t) == 2) {
-                        c2->restore_serialized_message(
-                            mqtt::publish_message(packet.begin(), packet.end()),
-                            []{}
-                        );
-                    }
-                    else if (sizeof(packet_id_t) == 4) {
-                        c2->restore_serialized_message(
-                            mqtt::publish_32_message(packet.begin(), packet.end()),
-                            []{}
-                        );
-                    }
-                    else {
-                        BOOST_CHECK(false);
-                    }
+                    restore_serialized_publish_message(c2, packet);
                 }
                 else {
                     // pubrel
-                    if (sizeof(packet_id_t) == 2) {
-                        c2->restore_serialized_message(
-                            mqtt::pubrel_message(packet.begin(), packet.end())
-                        );
-                    }
-                    else if (sizeof(packet_id_t) == 4) {
-                        c2->restore_serialized_message(
-                            mqtt::pubrel_32_message(packet.begin(), packet.end())
-                        );
-                    }
-                    else {
-                        BOOST_CHECK(false);
-                    }
+                    restore_serialized_pubrel_message(c2, packet);
                 }
             }
             c2->connect();
@@ -677,37 +671,11 @@ BOOST_AUTO_TEST_CASE( pubrel_qos2 ) {
                 auto const& packet = std::get<1>(e.second);
                 if (std::get<0>(e.second)) {
                     // is publish
-                    if (sizeof(packet_id_t) == 2) {
-                        c2->restore_serialized_message(
-                            mqtt::publish_message(packet.begin(), packet.end()),
-                            []{}
-                        );
-                    }
-                    else if (sizeof(packet_id_t) == 4) {
-                        c2->restore_serialized_message(
-                            mqtt::publish_32_message(packet.begin(), packet.end()),
-                            []{}
-                        );
-                    }
-                    else {
-                        BOOST_CHECK(false);
-                    }
+                    restore_serialized_publish_message(c2, packet);
                 }
                 else {
                     // pubrel
-                    if (sizeof(packet_id_t) == 2) {
-                        c2->restore_serialized_message(
-                            mqtt::pubrel_message(packet.begin(), packet.end())
-                        );
-                    }
-                    else if (sizeof(packet_id_t) == 4) {
-                        c2->restore_serialized_message(
-                            mqtt::pubrel_32_message(packet.begin(), packet.end())
-                        );
-                    }
-                    else {
-                        BOOST_CHECK(false);
-                    }
+                    restore_serialized_pubrel_message(c2, packet);
                 }
             }
             c2->connect();
@@ -946,37 +914,11 @@ BOOST_AUTO_TEST_CASE( multi_publish_qos1 ) {
                     auto const& packet = std::get<1>(e.second);
                     if (std::get<0>(e.second)) {
                         // is publish
-                        if (sizeof(packet_id_t) == 2) {
-                            c2->restore_serialized_message(
-                                mqtt::publish_message(packet.begin(), packet.end()),
-                                []{}
-                            );
-                        }
-                        else if (sizeof(packet_id_t) == 4) {
-                            c2->restore_serialized_message(
-                                mqtt::publish_32_message(packet.begin(), packet.end()),
-                                []{}
-                            );
-                        }
-                        else {
-                            BOOST_CHECK(false);
-                        }
+                        restore_serialized_publish_message(c2, packet);
                     }
                     else {
                         // pubrel
-                        if (sizeof(packet_id_t) == 2) {
-                            c2->restore_serialized_message(
-                                mqtt::pubrel_message(packet.begin(), packet.end())
-                            );
-                        }
-                        else if (sizeof(packet_id_t) == 4) {
-                            c2->restore_serialized_message(
-                                mqtt::pubrel_32_message(packet.begin(), packet.end())
-                            );
-                        }
-                        else {
-                            BOOST_CHECK(false);
-                        }
+                        restore_serialized_pubrel_message(c2, packet);
                     }
                 }
                 c2->connect();
