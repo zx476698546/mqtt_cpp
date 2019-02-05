@@ -55,6 +55,52 @@ restore_serialized_pubrel_message(Client const& c, Packet const& packet) {
     );
 }
 
+
+template <typename Client, typename Serialized>
+inline
+typename std::enable_if<
+    sizeof(typename Client::element_type::packet_id_t) == 2
+>::type
+set_serialize_handlers(Client const& c, Serialized& serialized) {
+    using packet_id_t = typename std::remove_reference_t<decltype(*c)>::packet_id_t;
+    c->set_serialize_handlers(
+        [&serialized](mqtt::publish_message msg) {
+            serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
+        },
+        [&serialized](mqtt::pubrel_message msg) {
+            BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
+            serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
+        },
+        [&serialized](packet_id_t packet_id) {
+            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+            serialized.erase(packet_id);
+        }
+    );
+}
+
+template <typename Client, typename Serialized>
+inline
+typename std::enable_if<
+    sizeof(typename Client::element_type::packet_id_t) == 4
+>::type
+set_serialize_handlers(Client const& c, Serialized& serialized) {
+    using packet_id_t = typename std::remove_reference_t<decltype(*c)>::packet_id_t;
+    c->set_serialize_handlers(
+        [&serialized](mqtt::publish_32_message msg) {
+            serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
+        },
+        [&serialized](mqtt::pubrel_32_message msg) {
+            BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
+            serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
+        },
+        [&serialized](packet_id_t packet_id) {
+            BOOST_CHECK(serialized.find(packet_id) != serialized.end());
+            serialized.erase(packet_id);
+        }
+    );
+}
+
+
 BOOST_AUTO_TEST_CASE( publish_qos1 ) {
     boost::asio::io_service ios;
     test_broker b(ios);
@@ -78,68 +124,8 @@ BOOST_AUTO_TEST_CASE( publish_qos1 ) {
         >
     > serialized;
 
-    if (sizeof(packet_id_t) == 2) {
-        c1->set_serialize_handlers(
-            [&serialized](mqtt::publish_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-
-        c2->set_serialize_handlers(
-            [&serialized](mqtt::publish_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-    }
-    else if (sizeof(packet_id_t) == 4) {
-        c1->set_serialize_handlers(
-            [&serialized](mqtt::publish_32_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_32_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-
-        c2->set_serialize_handlers(
-            [&serialized](mqtt::publish_32_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_32_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-    }
-    else {
-        BOOST_CHECK(false);
-    }
-
+    set_serialize_handlers(c1, serialized);
+    set_serialize_handlers(c2, serialized);
 
     std::uint16_t pid_pub;
 
@@ -300,67 +286,8 @@ BOOST_AUTO_TEST_CASE( publish_qos2 ) {
         >
     > serialized;
 
-    if (sizeof(packet_id_t) == 2) {
-        c1->set_serialize_handlers(
-            [&serialized](mqtt::publish_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-
-        c2->set_serialize_handlers(
-            [&serialized](mqtt::publish_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-    }
-    else if (sizeof(packet_id_t) == 4) {
-        c1->set_serialize_handlers(
-            [&serialized](mqtt::publish_32_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_32_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-
-        c2->set_serialize_handlers(
-            [&serialized](mqtt::publish_32_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_32_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-    }
-    else {
-        BOOST_CHECK(false);
-    }
+    set_serialize_handlers(c1, serialized);
+    set_serialize_handlers(c2, serialized);
 
     std::uint16_t pid_pub;
 
@@ -529,67 +456,8 @@ BOOST_AUTO_TEST_CASE( pubrel_qos2 ) {
         >
     > serialized;
 
-    if (sizeof(packet_id_t) == 2) {
-        c1->set_serialize_handlers(
-            [&serialized](mqtt::publish_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-
-        c2->set_serialize_handlers(
-            [&serialized](mqtt::publish_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-    }
-    else if (sizeof(packet_id_t) == 4) {
-        c1->set_serialize_handlers(
-            [&serialized](mqtt::publish_32_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_32_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-
-        c2->set_serialize_handlers(
-            [&serialized](mqtt::publish_32_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_32_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-    }
-    else {
-        BOOST_CHECK(false);
-    }
+    set_serialize_handlers(c1, serialized);
+    set_serialize_handlers(c2, serialized);
 
     std::uint16_t pid_pub;
 
@@ -765,68 +633,8 @@ BOOST_AUTO_TEST_CASE( multi_publish_qos1 ) {
         >
     > serialized;
 
-    if (sizeof(packet_id_t) == 2) {
-        c1->set_serialize_handlers(
-            [&serialized](mqtt::publish_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-
-        c2->set_serialize_handlers(
-            [&serialized](mqtt::publish_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-    }
-    else if (sizeof(packet_id_t) == 4) {
-        c1->set_serialize_handlers(
-            [&serialized](mqtt::publish_32_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_32_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-
-        c2->set_serialize_handlers(
-            [&serialized](mqtt::publish_32_message msg) {
-                serialized.emplace(msg.packet_id(), std::make_tuple(true, msg.continuous_buffer()));
-            },
-            [&serialized](mqtt::pubrel_32_message msg) {
-                BOOST_CHECK(serialized.find(msg.packet_id()) != serialized.end());
-                serialized[msg.packet_id()] = std::make_tuple(false, msg.continuous_buffer());
-            },
-            [&serialized](packet_id_t packet_id) {
-                BOOST_CHECK(serialized.find(packet_id) != serialized.end());
-                serialized.erase(packet_id);
-            }
-        );
-    }
-    else {
-        BOOST_CHECK(false);
-    }
-
+    set_serialize_handlers(c1, serialized);
+    set_serialize_handlers(c2, serialized);
 
     std::uint16_t pid_pub1;
     std::uint16_t pid_pub2;
