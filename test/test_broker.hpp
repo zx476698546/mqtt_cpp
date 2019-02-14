@@ -59,6 +59,8 @@ public:
     void handle_accept(Endpoint& ep) {
         auto sp = ep.shared_from_this();
         ep.socket()->lowest_layer().set_option(as::ip::tcp::no_delay(true));
+        ep.socket()->lowest_layer().set_option(as::socket_base::receive_buffer_size(6291456));
+        ep.socket()->lowest_layer().set_option(as::socket_base::send_buffer_size(4194304));
         ep.start_session(
             [sp] // keeping ep's lifetime as sp until session finished
             (boost::system::error_code const& /*ec*/) {
