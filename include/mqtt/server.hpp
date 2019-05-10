@@ -53,11 +53,11 @@ public:
         as::io_service& ios_accept,
         as::io_service& ios_con,
         AcceptorConfig&& config)
-        : ios_accept_(ios_accept),
+        : ep_(std::forward<AsioEndpoint>(ep)),
+          ios_accept_(ios_accept),
           ios_con_(ios_con),
-          acceptor_(ios_accept_, std::forward<AsioEndpoint>(ep)) {
-        config(acceptor_);
-    }
+          acceptor_(ios_accept_, ep_),
+          config_(std::forward<AcceptorConfig>(config)) {}
 
     template <typename AsioEndpoint>
     server(
@@ -82,6 +82,34 @@ public:
     void listen() {
         close_request_ = false;
         renew_socket();
+
+        auto post_error =
+            [this] (boost::system::error_code const& ec) {
+                ios_accept_.post(
+                    [this, ec] {
+                        if (h_error_) h_error_(ec);
+                    }
+                );
+            };
+
+        boost::system::error_code ec;
+        acceptor_.open(ep_.protocol(), ec);
+        if (ec) {
+            post_error(ec);
+            return;
+        }
+        config_(acceptor_);
+        acceptor_.bind(ep_, ec);
+        if (ec) {
+            post_error(ec);
+            return;
+        }
+        acceptor_.listen(as::socket_base::max_listen_connections, ec);
+        if (ec) {
+            post_error(ec);
+            return;
+        }
+
         do_accept();
     }
 
@@ -130,11 +158,13 @@ private:
     }
 
 private:
+    as::ip::tcp::endpoint ep_;
     as::io_service& ios_accept_;
     as::io_service& ios_con_;
     as::ip::tcp::acceptor acceptor_;
+    std::function<void(as::ip::tcp::acceptor&)> config_;
     std::unique_ptr<socket_t> socket_;
-    bool close_request_;
+    bool close_request_{false};
     accept_handler h_accept_;
     error_handler h_error_;
 };
@@ -166,13 +196,12 @@ public:
         as::io_service& ios_accept,
         as::io_service& ios_con,
         AcceptorConfig&& config)
-        : ios_accept_(ios_accept),
+        : ep_(std::forward<AsioEndpoint>(ep)),
+          ios_accept_(ios_accept),
           ios_con_(ios_con),
-          acceptor_(ios_accept_, std::forward<AsioEndpoint>(ep)),
-          close_request_(false),
-          ctx_(std::move(ctx)) {
-        config(acceptor_);
-    }
+          acceptor_(ios_accept_),
+          config_(std::forward<AcceptorConfig>(config)),
+          ctx_(std::move(ctx)) {}
 
     template <typename AsioEndpoint>
     server_tls(
@@ -200,6 +229,34 @@ public:
     void listen() {
         close_request_ = false;
         renew_socket();
+
+        auto post_error =
+            [this] (boost::system::error_code const& ec) {
+                ios_accept_.post(
+                    [this, ec] {
+                        if (h_error_) h_error_(ec);
+                    }
+                );
+            };
+
+        boost::system::error_code ec;
+        acceptor_.open(ep_.protocol(), ec);
+        if (ec) {
+            post_error(ec);
+            return;
+        }
+        config_(acceptor_);
+        acceptor_.bind(ep_, ec);
+        if (ec) {
+            post_error(ec);
+            return;
+        }
+        acceptor_.listen(as::socket_base::max_listen_connections, ec);
+        if (ec) {
+            post_error(ec);
+            return;
+        }
+
         do_accept();
     }
 
@@ -258,9 +315,11 @@ private:
     }
 
 private:
+    as::ip::tcp::endpoint ep_;
     as::io_service& ios_accept_;
     as::io_service& ios_con_;
     as::ip::tcp::acceptor acceptor_;
+    std::function<void(as::ip::tcp::acceptor&)> config_;
     std::unique_ptr<socket_t> socket_;
     bool close_request_{false};
     accept_handler h_accept_;
@@ -311,12 +370,11 @@ public:
         as::io_service& ios_accept,
         as::io_service& ios_con,
         AcceptorConfig&& config)
-        : ios_accept_(ios_accept),
+        : ep_(std::forward<AsioEndpoint>(ep)),
+          ios_accept_(ios_accept),
           ios_con_(ios_con),
-          acceptor_(ios_accept_, std::forward<AsioEndpoint>(ep)),
-          close_request_(false) {
-        config(acceptor_);
-    }
+          acceptor_(ios_accept_, ep_),
+          config_(std::forward<AcceptorConfig>(config)) {}
 
     template <typename AsioEndpoint>
     server_ws(
@@ -341,6 +399,34 @@ public:
     void listen() {
         close_request_ = false;
         renew_socket();
+
+        auto post_error =
+            [this] (boost::system::error_code const& ec) {
+                ios_accept_.post(
+                    [this, ec] {
+                        if (h_error_) h_error_(ec);
+                    }
+                );
+            };
+
+        boost::system::error_code ec;
+        acceptor_.open(ep_.protocol(), ec);
+        if (ec) {
+            post_error(ec);
+            return;
+        }
+        config_(acceptor_);
+        acceptor_.bind(ep_, ec);
+        if (ec) {
+            post_error(ec);
+            return;
+        }
+        acceptor_.listen(as::socket_base::max_listen_connections, ec);
+        if (ec) {
+            post_error(ec);
+            return;
+        }
+
         do_accept();
     }
 
@@ -430,11 +516,13 @@ private:
     }
 
 private:
+    as::ip::tcp::endpoint ep_;
     as::io_service& ios_accept_;
     as::io_service& ios_con_;
     as::ip::tcp::acceptor acceptor_;
+    std::function<void(as::ip::tcp::acceptor&)> config_;
     std::unique_ptr<socket_t> socket_;
-    bool close_request_;
+    bool close_request_{false};
     accept_handler h_accept_;
     error_handler h_error_;
 };
@@ -468,13 +556,12 @@ public:
         as::io_service& ios_accept,
         as::io_service& ios_con,
         AcceptorConfig&& config)
-        : ios_accept_(ios_accept),
+        : ep_(std::forward<AsioEndpoint>(ep)),
+          ios_accept_(ios_accept),
           ios_con_(ios_con),
-          acceptor_(ios_accept_, std::forward<AsioEndpoint>(ep)),
-          close_request_(false),
-          ctx_(std::move(ctx)) {
-        config(acceptor_);
-    }
+          acceptor_(ios_accept_, ep_),
+          config_(std::forward<AcceptorConfig>(config)),
+          ctx_(std::move(ctx)) {}
 
     template <typename AsioEndpoint>
     server_tls_ws(
@@ -502,6 +589,34 @@ public:
     void listen() {
         close_request_ = false;
         renew_socket();
+
+        auto post_error =
+            [this] (boost::system::error_code const& ec) {
+                ios_accept_.post(
+                    [this, ec] {
+                        if (h_error_) h_error_(ec);
+                    }
+                );
+            };
+
+        boost::system::error_code ec;
+        acceptor_.open(ep_.protocol(), ec);
+        if (ec) {
+            post_error(ec);
+            return;
+        }
+        config_(acceptor_);
+        acceptor_.bind(ep_, ec);
+        if (ec) {
+            post_error(ec);
+            return;
+        }
+        acceptor_.listen(as::socket_base::max_listen_connections, ec);
+        if (ec) {
+            post_error(ec);
+            return;
+        }
+
         do_accept();
     }
 
@@ -603,11 +718,13 @@ private:
     }
 
 private:
+    as::ip::tcp::endpoint ep_;
     as::io_service& ios_accept_;
     as::io_service& ios_con_;
     as::ip::tcp::acceptor acceptor_;
+    std::function<void(as::ip::tcp::acceptor&)> config_;
     std::unique_ptr<socket_t> socket_;
-    bool close_request_;
+    bool close_request_{false};
     accept_handler h_accept_;
     error_handler h_error_;
     as::ssl::context ctx_;
